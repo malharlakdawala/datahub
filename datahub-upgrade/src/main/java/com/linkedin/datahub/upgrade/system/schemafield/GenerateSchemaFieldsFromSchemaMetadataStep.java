@@ -367,8 +367,10 @@ public class GenerateSchemaFieldsFromSchemaMetadataStep implements UpgradeStep {
 
   /**
    * Ingests disable-cleanup deletes in chunks of at most {@code batchSize}, sleeping {@code
-   * batchDelayMs} between chunks (not after the last). Keeps each {@code ingestAspects} call
-   * bounded when a SQL batch of wide schemas yields fields × disabled-aspects deletes.
+   * batchDelayMs} between chunks (not after the last). Uses async {@code ingestProposal} (same path
+   * as live schemaField side-effect deletes) because {@code DeleteItemImpl} cannot go through
+   * {@code ingestAspects}/{@code toUpsertBatchItems}. Keeps each call bounded when a SQL batch of
+   * wide schemas yields fields × disabled-aspects deletes.
    */
   @VisibleForTesting
   void ingestDisabledAspectDeletes(List<MCPItem> cleanupDeletes) {
@@ -392,7 +394,8 @@ public class GenerateSchemaFieldsFromSchemaMetadataStep implements UpgradeStep {
               .retrieverContext(opContext.getRetrieverContext())
               .items(chunk)
               .build(opContext);
-      entityService.ingestAspects(opContext, deleteBatch, true, false);
+      // Async proposal path: DeleteItemImpl is not accepted by ingestAspects/toUpsertBatchItems.
+      entityService.ingestProposal(opContext, deleteBatch, true);
       if (i < chunks.size() - 1 && batchDelayMs > 0) {
         log.info("Sleeping for {} ms between cleanup delete chunks", batchDelayMs);
         try {

@@ -5,6 +5,7 @@ import static com.linkedin.metadata.Constants.DOMAINS_ASPECT_NAME;
 import static com.linkedin.metadata.Constants.OWNERSHIP_ASPECT_NAME;
 import static com.linkedin.metadata.Constants.SCHEMA_METADATA_ASPECT_NAME;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -222,7 +223,7 @@ public class GenerateSchemaFieldsFromSchemaMetadataStepTest {
 
   @Test
   public void testIngestDisabledAspectDeletesChunksByBatchSize() {
-    // batchSize=5 → 12 deletes should be 3 ingestAspects calls (5+5+2)
+    // batchSize=5 → 12 deletes should be 3 async ingestProposal calls (5+5+2)
     GenerateSchemaFieldsFromSchemaMetadataStep step =
         new GenerateSchemaFieldsFromSchemaMetadataStep(
             OP_CONTEXT,
@@ -244,7 +245,9 @@ public class GenerateSchemaFieldsFromSchemaMetadataStepTest {
 
     ArgumentCaptor<AspectsBatch> batchCaptor = ArgumentCaptor.forClass(AspectsBatch.class);
     verify(mockEntityService, times(3))
-        .ingestAspects(eq(OP_CONTEXT), batchCaptor.capture(), eq(true), eq(false));
+        .ingestProposal(eq(OP_CONTEXT), batchCaptor.capture(), eq(true));
+    verify(mockEntityService, times(0))
+        .ingestAspects(any(), any(), any(Boolean.class), any(Boolean.class));
 
     List<AspectsBatch> batches = batchCaptor.getAllValues();
     assertEquals(batches.get(0).getItems().size(), 5);
@@ -256,6 +259,8 @@ public class GenerateSchemaFieldsFromSchemaMetadataStepTest {
   public void testIngestDisabledAspectDeletesNoOpWhenEmpty() {
     GenerateSchemaFieldsFromSchemaMetadataStep step = newStep(false, false, false);
     step.ingestDisabledAspectDeletes(List.of());
+    verify(mockEntityService, times(0))
+        .ingestProposal(any(), any(AspectsBatch.class), anyBoolean());
     verify(mockEntityService, times(0))
         .ingestAspects(any(), any(), any(Boolean.class), any(Boolean.class));
   }
