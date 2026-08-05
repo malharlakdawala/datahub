@@ -637,11 +637,6 @@ public class CassandraAspectDao implements AspectDao, AspectMigrationsDao {
   }
 
   @Override
-  public boolean supportsRestoreIndicesScan() {
-    return false;
-  }
-
-  @Override
   @Nonnull
   public PartitionedStream<EbeanAspectV2> streamAspectBatches(
       @Nonnull final OperationContext operationContext, @Nonnull final RestoreIndicesArgs args) {

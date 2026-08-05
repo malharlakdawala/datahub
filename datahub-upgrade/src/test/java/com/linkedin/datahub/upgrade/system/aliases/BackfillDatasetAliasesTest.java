@@ -4,8 +4,8 @@ import static org.mockito.Mockito.mock;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
-import com.linkedin.metadata.entity.AspectDao;
 import com.linkedin.metadata.entity.EntityService;
+import com.linkedin.metadata.search.SearchService;
 import io.datahubproject.metadata.context.OperationContext;
 import org.testng.annotations.Test;
 
@@ -15,7 +15,7 @@ public class BackfillDatasetAliasesTest {
     return new BackfillDatasetAliases(
         mock(OperationContext.class),
         mock(EntityService.class),
-        mock(AspectDao.class),
+        mock(SearchService.class),
         enabled,
         1000,
         5000,

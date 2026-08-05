@@ -148,7 +148,7 @@ public class NonBlockingConfigs {
   public NonBlockingSystemUpgrade backfillDatasetAliases(
       @Qualifier("systemOperationContext") final OperationContext opContext,
       final EntityService<?> entityService,
-      final AspectDao aspectDao,
+      final SearchService searchService,
       @Value("${systemUpdate.datasetAliases.enabled}") final boolean enabled,
       @Value("${systemUpdate.datasetAliases.batchSize}") final Integer batchSize,
       @Value("${systemUpdate.datasetAliases.delayMs}") final Integer delayMs,
@@ -156,7 +156,14 @@ public class NonBlockingConfigs {
       // SYSTEM_UPDATE_DATASET_ALIASES_REPROCESS (not ..._REPROCESS_ENABLED)
       @Value("${systemUpdate.datasetAliases.reprocess.enabled}") final boolean reprocessEnabled) {
     return new BackfillDatasetAliases(
-        opContext, entityService, aspectDao, enabled, batchSize, delayMs, limit, reprocessEnabled);
+        opContext,
+        entityService,
+        searchService,
+        enabled,
+        batchSize,
+        delayMs,
+        limit,
+        reprocessEnabled);
   }
 
   @Bean
