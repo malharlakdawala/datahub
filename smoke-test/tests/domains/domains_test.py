@@ -23,51 +23,28 @@ def dataset_urn(auth_session, graph_client, tmp_path_factory):
 
 
 @with_test_retry()
-def _ensure_more_domains(
-    auth_session, query: str, variables: Dict[str, Any], before_count: int
+def _ensure_domain_is_listed(
+    auth_session, query: str, variables: Dict[str, Any], domain_urn: str
 ) -> None:
-    # Get new count of Domains
+    # listDomains is search-backed, so finding the urn here is what proves the domain
+    # was indexed. The domain(urn:) fetch below only reads the primary store.
     res_data = execute_graphql(auth_session, query, variables)
 
-    assert res_data["data"]["listDomains"]["total"] is not None
-
-    # Assert that there are more domains now.
-    after_count = res_data["data"]["listDomains"]["total"]
-    logger.info(f"after_count is {after_count}")
-    assert after_count == before_count + 1
+    listed_urns = [
+        domain["urn"] for domain in res_data["data"]["listDomains"]["domains"]
+    ]
+    logger.info(f"listed domain urns are {listed_urns}")
+    assert domain_urn in listed_urns
 
 
 @pytest.mark.dependency()
 def test_create_list_get_domain(auth_session):
-    # Setup: Delete the domain (if exists)
-    delete_entity(auth_session, "urn:li:domain:test id")
-
-    # Get count of existing secrets
-    list_domains_query = """query listDomains($input: ListDomainsInput!) {
-            listDomains(input: $input) {
-              start
-              count
-              total
-              domains {
-                urn
-                properties {
-                  name
-                }
-              }
-            }
-        }"""
-    list_domains_variables: Dict[str, Any] = {"input": {"start": 0, "count": 20}}
-
-    res_data = execute_graphql(auth_session, list_domains_query, list_domains_variables)
-
-    assert res_data["data"]["listDomains"]["total"] is not None
-    logger.info(f"domains resp is {res_data}")
-
-    before_count = res_data["data"]["listDomains"]["total"]
-    logger.info(f"before_count is {before_count}")
-
-    domain_id = "test id"
-    domain_name = "test name"
+    # A unique run id keeps this test's assertions scoped to the domain it creates.
+    # Other modules create domains concurrently under pytest-xdist, so anything
+    # asserted against a global domain count or a fixed name/id is racy.
+    run_id = uuid.uuid4().hex[:8]
+    domain_id = f"test-domain-{run_id}"
+    domain_name = f"test domain {run_id}"
     domain_description = "test description"
 
     # Create new Domain
@@ -90,11 +67,29 @@ def test_create_list_get_domain(auth_session):
 
     domain_urn = res_data["data"]["createDomain"]
 
-    _ensure_more_domains(
+    # Scope the search to run_id so concurrently created domains cannot affect it.
+    list_domains_query = """query listDomains($input: ListDomainsInput!) {
+            listDomains(input: $input) {
+              start
+              count
+              total
+              domains {
+                urn
+                properties {
+                  name
+                }
+              }
+            }
+        }"""
+    list_domains_variables: Dict[str, Any] = {
+        "input": {"start": 0, "count": 20, "query": run_id}
+    }
+
+    _ensure_domain_is_listed(
         auth_session=auth_session,
         query=list_domains_query,
         variables=list_domains_variables,
-        before_count=before_count,
+        domain_urn=domain_urn,
     )
 
     # Get the domain value back
